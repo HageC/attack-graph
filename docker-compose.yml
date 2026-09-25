@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: attackgraph
+      POSTGRES_USER: attackgraph
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-attackgraph-postgres-local-only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attackgraph -d attackgraph"]
+      interval: 5s
+      retries: 20
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/attackgraph-local-only}
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD:-attackgraph-local-only}", "RETURN 1"]
+      interval: 10s
+      retries: 12
+  simulation:
+    build: ./services/simulation
+  api:
+    build: ./services/api
+    environment:
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-attackgraph-local-only}
+      SIMULATION_URL: ${SIMULATION_URL:-http://simulation:8000}
+      DATABASE_URL: ${DATABASE_URL:-postgres://attackgraph:attackgraph-postgres-local-only@postgres:5432/attackgraph?sslmode=disable}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-northstar-demo-local}
+      SECOND_DEMO_PASSWORD: ${SECOND_DEMO_PASSWORD:-harbor-demo-local}
+      DEMO_VIEWER_PASSWORD: ${DEMO_VIEWER_PASSWORD:-northstar-viewer-local}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      simulation:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8080:8080"
+  web:
+    build: ./apps/web
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:3001:80"
+volumes:
+  neo4j_data:
+  postgres_data:
