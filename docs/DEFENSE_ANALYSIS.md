@@ -1,0 +1,13 @@
+# Defense comparison model
+
+The Defense lab compares two modeled security settings against the same immutable graph snapshot. Each of 20–1000 iterations runs the existing discrete-event simulator twice with an identical seed: once with baseline control effectiveness and detection coverage, then with the proposed values. The next iteration increments the seed. This paired design reduces random variation when estimating the change in target reach.
+
+For each candidate transition, the simulator samples success using `transition.likelihood × (1 − control_effectiveness)`. Detection is sampled separately using `detection_coverage`. Detection produces a synthetic event but does not stop the actor. The candidate path and action delays are determined by the seeded simulator. The comparison changes only these two configured values; it does not mutate the saved graph or vulnerability state.
+
+The API reports the fraction of runs reaching the target and the fraction with at least one detected attempt. Their 95% intervals use the Wilson binomial formula. The target-reach difference is calculated per paired seed and its 95% interval uses a normal approximation to the paired sample mean. The mean assets affected counts the starting asset plus unique targets of successful transitions. Time-to-detection statistics include only runs with a detection; time-to-target statistics include only runs that reach the target. A missing timing value is returned as `null`. Percentiles select the sample at the rounded zero-based position `(n − 1) × percentile` in sorted order.
+
+These intervals describe Monte Carlo sampling uncertainty **inside this synthetic model**. They do not account for uncertainty in input likelihoods, attack behavior, control efficacy, or asset inventory. They are not calibrated breach probabilities or claims about a real environment. Zero variance can produce a zero-width paired interval, especially for identical settings or deterministic edge cases.
+
+The current request is synchronous. The Go API limits iterations and applies a 60-second service timeout. Results are not persisted; run the same request and seed to reproduce them. A future queued job can persist comparison inputs and results, provide progress, and support larger workloads.
+
+Investigation reports are generated from persisted simulation runs. Each report includes the run configuration and event timeline, snapshot content hash, counts of delivered telemetry and alerts, and up to 200 matching alert records. The JSON export captures the report as it existed when fetched; alert counts can increase while a playback job continues. Reports contain synthetic evidence only.
