@@ -55,5 +55,3 @@ export default function App({environmentID,organizationID,environmentName,role,e
  <DefenseLab key={`defense-${environmentID}`} environmentID={environmentID} snapshots={snapshots.data||[]} canEdit={role!=='viewer'}/>
  <footer>ATTACKGRAPH · SYNTHETIC MODEL ONLY <span>Transition likelihoods are estimates, not verified exploitation probabilities.</span></footer></div></main></div>
 }
-
-
